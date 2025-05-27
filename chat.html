@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Público Simulado</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f4f7;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #chatContainer {
+      width: 360px;
+      height: 500px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+    #chatHeader {
+      background: #0066cc;
+      color: white;
+      padding: 12px;
+      text-align: center;
+      font-weight: bold;
+      position: relative;
+    }
+    #usuariosConectados {
+      font-size: 13px;
+      color: #00ff00;
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0.85;
+    }
+    #cerrarChat {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    #chatMessages {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      height: 100%;
+    }
+    .mensaje {
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 8px;
+      max-width: 75%;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s ease-in-out;
+    }
+    .mensaje.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .mensaje.izquierda {
+      background: #e2e8f0;
+      align-self: flex-start;
+    }
+    .mensaje.derecha {
+      background: #d1fae5;
+      align-self: flex-end;
+    }
+    #chatForm {
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+      background: #f9fafb;
+    }
+    #nombreInput, #mensajeInput {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .form-buttons {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    #enviarBtn, #soporteBtn {
+      flex: 1;
+      background: #0066cc;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div id="chatContainer">
+    <div id="chatHeader">
+      Chat Público de Clientes
+      <button id="cerrarChat">✖</button>
+      <div id="usuariosConectados">🟢 82</div>
+    </div>
+    <div id="chatMessages"></div>
+    <form id="chatForm">
+      <input type="text" id="nombreInput" placeholder="Tu nombre (Ej: Juan M.)" required>
+      <input type="text" id="mensajeInput" placeholder="Escribe tu comentario..." required>
+      <div class="form-buttons">
+        <button type="submit" id="enviarBtn">Enviar</button>
+        <a id="soporteBtn" href="https://wa.me/50245214000" target="_blank">Soporte</a>
+      </div>
+    </form>
+  </div>
+
+  <audio id="sonidoNuevoMensaje" preload="auto">
+    <source src="ding.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    const chatMessages = document.getElementById('chatMessages');
+    const chatForm = document.getElementById('chatForm');
+    const mensajeInput = document.getElementById('mensajeInput');
+    const nombreInput = document.getElementById('nombreInput');
+    const sonido = document.getElementById('sonidoNuevoMensaje');
+    const cerrarBtn = document.getElementById('cerrarChat');
+    const usuariosConectados = document.getElementById('usuariosConectados');
+
+    let mensajesSimulados = [
+      { nombre: 'Carlos T.', texto: 'Está chilero el servicio, lo recomiendo con confianza.' },
+      { nombre: 'Administrador', texto: '¿Tenés dudas? Mandanos un WhatsApp o llamanos al 45214000.' },
+      { nombre: 'Logística Plus', texto: 'Nos tiene al 100 con el monitoreo, muy pilas ustedes.' },
+      { nombre: 'Miriam G.', texto: 'Con el apagado remoto salvé mi paila, de veras, gracias.' },
+      { nombre: 'Transporte XYZ', texto: 'Funciona de a huevo para controlar las rutas.' },
+      { nombre: 'Administrador', texto: 'Recuerda que para soporte técnico directo podés ir al botón “Soporte”.' }
+    ];
+
+    mensajesSimulados = mensajesSimulados.sort(() => Math.random() - 0.5);
+    let indexMensaje = 0;
+    let simulacionActiva = true;
+    let timeoutId;
+
+    function actualizarUsuariosConectados() {
+      const cantidad = 75 + Math.floor(Math.random() * 11); // entre 75 y 85
+      usuariosConectados.textContent = `🟢 ${cantidad}`;
+    }
+    setInterval(actualizarUsuariosConectados, 10000);
+    actualizarUsuariosConectados();
+
+    function agregarMensaje(texto, lado = 'izquierda') {
+      const div = document.createElement('div');
+      div.classList.add('mensaje', lado);
+      div.textContent = texto;
+      chatMessages.appendChild(div);
+      setTimeout(() => div.classList.add('visible'), 50);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      if (lado === 'derecha') {
+        try { sonido.play(); } catch (e) { console.warn('No se pudo reproducir el sonido:', e.message); }
+      }
+    }
+
+    function agregarProximoMensaje() {
+      if (!simulacionActiva) return;
+      const { nombre, texto } = mensajesSimulados[indexMensaje];
+      agregarMensaje(`${nombre}: ${texto}`, 'izquierda');
+      indexMensaje = (indexMensaje + 1) % mensajesSimulados.length;
+      const siguienteIntervalo = Math.floor(Math.random() * 10000) + 10000;
+      timeoutId = setTimeout(agregarProximoMensaje, siguienteIntervalo);
+    }
+
+    setTimeout(() => {
+      agregarMensaje(`${mensajesSimulados[0].nombre}: ${mensajesSimulados[0].texto}`, 'izquierda');
+      agregarMensaje(`${mensajesSimulados[1].nombre}: ${mensajesSimulados[1].texto}`, 'izquierda');
+      indexMensaje = 2;
+      agregarProximoMensaje();
+    }, 1000);
+
+    cerrarBtn.addEventListener('click', () => {
+      if (window !== window.parent) {
+        const iframe = window.parent.document.getElementById('iframeChat');
+        if (iframe) iframe.remove();
+      } else {
+        document.getElementById('chatContainer').style.display = 'none';
+      }
+      simulacionActiva = false;
+      clearTimeout(timeoutId);
+    });
+
+    chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const nombre = nombreInput.value.trim();
+      const texto = mensajeInput.value.trim();
+
+      const reglas = /(@|https?:\/\/|www\.|\d{4,})/i;
+      if (reglas.test(texto)) {
+        alert('Por razones de seguridad, no se permiten correos, teléfonos ni enlaces.');
+        return;
+      }
+
+      if (!texto || !nombre) return;
+      const mensajeCompleto = `${nombre}: ${texto}`;
+      agregarMensaje(mensajeCompleto, 'derecha');
+      mensajeInput.value = '';
+
+      const comentarios = JSON.parse(localStorage.getItem('comentarios') || '[]');
+      comentarios.push({ nombre, texto });
+      localStorage.setItem('comentarios', JSON.stringify(comentarios));
+
+      const datos = new URLSearchParams();
+      datos.append('nombre', nombre);
+      datos.append('texto', texto);
+
+      fetch('https://antilossgps.com/guardar-comentario.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: datos
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status !== 'ok') {
+          console.warn('No se pudo guardar el comentario en el log');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
